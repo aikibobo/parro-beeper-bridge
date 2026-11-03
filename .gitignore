@@ -1,0 +1,9 @@
+/parro-bridge
+/data/
+*.db
+*.db-*
+config.yaml
+registration.yaml
+/logs/
+/bin/
+/logs-console.txt
