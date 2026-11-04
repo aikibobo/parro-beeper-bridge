@@ -6,7 +6,7 @@ One Go program on [mautrix bridgev2](https://github.com/mautrix/go/tree/main/bri
 
 | Path | What |
 |---|---|
-| `cmd/parro-bridge` | Entry point, refuses to start without encryption |
+| `cmd/parro-beeper-bridge` | Entry point, refuses to start without encryption |
 | `pkg/parro` | API client and login. GET only towards the API, enforced by the HTTP transport |
 | `pkg/connector` | bridgev2 connector: login, discovery, polling, message conversion |
 | `scripts/watchdog.sh` | Runs separately every 5 minutes and alerts when the bridge stops working: a dialog on macOS, the journal and a desktop notification on Linux |

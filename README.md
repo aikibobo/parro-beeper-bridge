@@ -13,7 +13,7 @@ Read your Parro school conversations in Beeper. One program on your Mac or Linux
 [Parro](https://www.parro.com) is the app many Dutch primary schools use to talk to parents. [Beeper](https://www.beeper.com) puts your chats from WhatsApp, Signal, Instagram and more into one app, using bridges that translate each network to the Matrix protocol. Parro is not one of its networks, but Beeper lets you connect your own: a *self-hosted bridge*, which runs on your own computer and connects to the Beeper server. This project is such a bridge.
 
 ```
-Parro  <-- reads every 15 min --  parro-bridge on your computer  -- encrypted -->  Beeper  -->  your chats
+Parro  <-- reads every 15 min --  parro-beeper-bridge on your computer  -- encrypted -->  Beeper  -->  your chats
 ```
 
 ## What you get
@@ -52,7 +52,7 @@ Run `./install.sh` again to update.
 You are moving messages and photos of **other parents and children** out of Parro. Parro's [privacy statement](https://www.parnassys.nl/juridisch/privacystatement-parro/) makes parents responsible for what they share outside the closed group. Keep it to yourself.
 
 1. **Encrypted to Beeper.** The bridge refuses to start unless end-to-bridge encryption is on, so Beeper's servers cannot read the messages.
-2. **On your computer.** The bridge database holds your Parro tokens and message IDs, in `~/Library/Application Support/parro-bridge/` on macOS or `~/.local/share/parro-bridge/` on Linux, readable only by your user. Message text is not kept by the bridge, but stays in your Beeper apps.
+2. **On your computer.** The bridge database holds your Parro tokens and message IDs, in `~/Library/Application Support/parro-beeper-bridge/` on macOS or `~/.local/share/parro-beeper-bridge/` on Linux, readable only by your user. Message text is not kept by the bridge, but stays in your Beeper apps.
 3. **Parro stays untouched.** The client can only send GET requests to the Parro API. Login is the only exception.
 4. **Logs** contain IDs and counts, not message text or tokens.
 
@@ -62,7 +62,7 @@ Use it for your own account only.
 
 **Do I miss messages when my Mac is off?** No. Parro keeps them, and they come in when the Mac is back on.
 
-**Why is it called `sh-parro`?** Beeper's `bbctl` requires self-hosted bridge names to start with `sh-`.
+**Why is it called `sh-parro`?** Beeper's `bbctl` requires self-hosted bridge names to start with `sh-`. The program itself is `parro-beeper-bridge`; `sh-parro` is only its name inside Beeper.
 
 **Why is the icon in the Beeper sidebar still a green speech bubble?** Beeper seems to choose that one itself for self-hosted bridges. The chats do show the Parro logo, which the installer downloads to your own Mac.
 
@@ -72,8 +72,8 @@ Use it for your own account only.
 
 ## Troubleshooting
 
-1. Logs: `logs/bridge.log` in the data folder above. On Linux also `journalctl --user -u parro-bridge -u parro-bridge-watchdog`.
-2. Restart: `launchctl kickstart -k gui/$(id -u)/parro-bridge` on macOS, `systemctl --user restart parro-bridge` on Linux.
+1. Logs: `logs/bridge.log` in the data folder above. On Linux also `journalctl --user -u parro-beeper-bridge -u parro-beeper-bridge-watchdog`.
+2. Restart: `launchctl kickstart -k gui/$(id -u)/parro-beeper-bridge` on macOS, `systemctl --user restart parro-beeper-bridge` on Linux.
 3. Log in again: send `login` to `@sh-parrobot:beeper.local`
 4. Recreate all chats with fresh history: create an empty file `reset-portals` in the data folder, then restart.
 
@@ -82,20 +82,20 @@ Use it for your own account only.
 macOS:
 
 ```bash
-launchctl bootout gui/$(id -u)/parro-bridge
-launchctl bootout gui/$(id -u)/parro-bridge-watchdog
-rm ~/Library/LaunchAgents/parro-bridge.plist ~/Library/LaunchAgents/parro-bridge-watchdog.plist
+launchctl bootout gui/$(id -u)/parro-beeper-bridge
+launchctl bootout gui/$(id -u)/parro-beeper-bridge-watchdog
+rm ~/Library/LaunchAgents/parro-beeper-bridge*.plist
 bin/bbctl delete sh-parro
-rm -r ~/Library/Application\ Support/parro-bridge
+rm -r ~/Library/Application\ Support/parro-beeper-bridge
 ```
 
 Linux:
 
 ```bash
-systemctl --user disable --now parro-bridge.service parro-bridge-watchdog.timer
-rm ~/.config/systemd/user/parro-bridge*
+systemctl --user disable --now parro-beeper-bridge.service parro-beeper-bridge-watchdog.timer
+rm ~/.config/systemd/user/parro-beeper-bridge*
 bin/bbctl delete sh-parro
-rm -r ~/.local/share/parro-bridge
+rm -r ~/.local/share/parro-beeper-bridge
 ```
 
 ## How it works
