@@ -251,8 +251,9 @@ UNIT
 }
 
 case "$PLATFORM" in
-  darwin-*) install_launchd ;;
+  macos-*) install_launchd ;;
   linux-*) install_systemd ;;
+  *) echo "!! No service setup for $PLATFORM." >&2; exit 1 ;;
 esac
 echo "== $APP is running as $LABEL"
 echo "   First time? In Beeper, send 'login' to @${NAME}bot:beeper.local"
