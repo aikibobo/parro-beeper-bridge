@@ -1,4 +1,5 @@
 /parro-bridge
+/parro-beeper-bridge
 /data/
 *.db
 *.db-*

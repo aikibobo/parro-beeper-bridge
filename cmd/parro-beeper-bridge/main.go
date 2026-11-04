@@ -1,4 +1,4 @@
-// parro-bridge shows Parro chats in Beeper, read-only.
+// parro-beeper-bridge shows Parro chats in Beeper, read-only.
 package main
 
 import (
@@ -18,7 +18,7 @@ var (
 
 func main() {
 	m := mxmain.BridgeMain{
-		Name:        "parro-bridge",
+		Name:        "parro-beeper-bridge",
 		Description: "A read-only Parro to Beeper bridge",
 		URL:         "https://github.com/aikibobo/parro-beeper-bridge",
 		Version:     "0.1.0",
@@ -26,7 +26,7 @@ func main() {
 	}
 	m.PostInit = func() {
 		if err := connector.CheckEncryption(m.Config.Encryption); err != nil {
-			fmt.Fprintln(os.Stderr, "parro-bridge refuses to start:", err)
+			fmt.Fprintln(os.Stderr, "parro-beeper-bridge refuses to start:", err)
 			os.Exit(1)
 		}
 	}
