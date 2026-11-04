@@ -33,9 +33,11 @@ New groups and chats appear by themselves. On first start each chat gets the las
 1. A computer that stays on: a Mac (Apple Silicon or Intel) or Linux with systemd (x86_64 or arm64).
 2. A Beeper account. On a Mac with [Beeper Desktop](https://www.beeper.com/download) the installer reuses its login, elsewhere `bbctl` asks for your email and a code.
 3. A Parro account.
-4. Optional: [Go](https://go.dev) to build from source, plus Xcode Command Line Tools on a Mac or a C compiler on Linux. Without Go the installer downloads a [release binary](https://github.com/aikibobo/parro-beeper-bridge/releases) and checks its checksum.
+4. Optional: [Go](https://go.dev) to build from source, plus Xcode Command Line Tools on a Mac or a C compiler on Linux. Not needed: without Go the installer downloads the program.
 
 ## Install
+
+Always install with `install.sh`. It sets up the program, the Beeper connection, the background services and the watchdog. You never need to download a release file by hand.
 
 ```bash
 git clone https://github.com/aikibobo/parro-beeper-bridge.git
@@ -43,13 +45,21 @@ cd parro-beeper-bridge
 ./install.sh
 ```
 
-This installs the bridge and a watchdog as background services: launchd agents on macOS, `systemd --user` units on Linux. On Linux, run `sudo loginctl enable-linger $USER` once so they keep running when you are logged out. Then start a chat in Beeper with `@sh-parrobot:beeper.local`, send `login`, and enter your Parro email and password. The password message is deleted right away and only the login tokens are stored.
+No `git`? Download the source code zip of the [latest release](https://github.com/aikibobo/parro-beeper-bridge/releases/latest), unpack it and run `./install.sh` in that folder.
+
+What `install.sh` does:
+
+1. **Gets the program.** With [Go](https://go.dev) installed it builds from source. Without Go it downloads the file for your computer from the latest release and checks it against `SHA256SUMS`.
+2. **Connects to Beeper.** On a Mac with Beeper Desktop it reuses that login, elsewhere `bbctl` asks for your email and a code.
+3. **Installs two background services:** the bridge and a watchdog. launchd agents on macOS, `systemd --user` units on Linux. On Linux, run `sudo loginctl enable-linger $USER` once so they keep running when you are logged out.
+
+Then start a chat in Beeper with `@sh-parrobot:beeper.local`, send `login`, and enter your Parro email and password. The password message is deleted right away and only the login tokens are stored.
 
 Run `./install.sh` again to update.
 
 ### Release files
 
-You do not need Go: without it, `install.sh` downloads the right file from the [latest release](https://github.com/aikibobo/parro-beeper-bridge/releases/latest) and checks it against `SHA256SUMS`. Each release has one file per platform, named `parro-beeper-bridge-<version>-<platform>`:
+These are what `install.sh` downloads when Go is missing. You only need them yourself if you want to run the program without the installer. Each [release](https://github.com/aikibobo/parro-beeper-bridge/releases) has one file per platform, named `parro-beeper-bridge-<version>-<platform>`:
 
 | Platform | For |
 |---|---|
@@ -57,8 +67,6 @@ You do not need Go: without it, `install.sh` downloads the right file from the [
 | `macos-intel` | Mac with an Intel processor |
 | `linux-amd64` | Linux on x86_64 |
 | `linux-arm64` | Linux on arm64, such as a Raspberry Pi 4 or 5 |
-
-All releases and their notes: [Releases](https://github.com/aikibobo/parro-beeper-bridge/releases).
 
 ## Privacy: please read
 
