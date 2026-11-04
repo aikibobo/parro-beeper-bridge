@@ -39,6 +39,6 @@ A failed attachment becomes a text line, and the rest of the message still comes
 
 ## Known limits
 
-1. No integration test of the whole chain yet: the parts are unit-tested with fakes.
+1. `TestWholeChain` runs the real bridgev2 core with this connector against a fake Parro and a fake Matrix server. Real Parro, Beeper, encryption and the service manager are not part of it.
 2. macOS only for installer and watchdog.
 3. Refresh token lifetime and Parro's rate limits are unknown.
