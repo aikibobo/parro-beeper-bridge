@@ -47,6 +47,19 @@ This installs the bridge and a watchdog as background services: launchd agents o
 
 Run `./install.sh` again to update.
 
+### Release files
+
+You do not need Go: without it, `install.sh` downloads the right file from the [latest release](https://github.com/aikibobo/parro-beeper-bridge/releases/latest) and checks it against `SHA256SUMS`. Each release has one file per platform, named `parro-beeper-bridge-<version>-<platform>`:
+
+| Platform | For |
+|---|---|
+| `macos-apple-silicon` | Mac with M1 or newer |
+| `macos-intel` | Mac with an Intel processor |
+| `linux-amd64` | Linux on x86_64 |
+| `linux-arm64` | Linux on arm64, such as a Raspberry Pi 4 or 5 |
+
+All releases and their notes: [Releases](https://github.com/aikibobo/parro-beeper-bridge/releases).
+
 ## Privacy: please read
 
 You are moving messages and photos of **other parents and children** out of Parro. Parro's [privacy statement](https://www.parnassys.nl/juridisch/privacystatement-parro/) makes parents responsible for what they share outside the closed group. Keep it to yourself.
