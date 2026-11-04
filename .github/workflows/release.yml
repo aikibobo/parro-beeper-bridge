@@ -12,10 +12,10 @@ jobs:
     strategy:
       matrix:
         include:
-          - { runner: macos-latest, goos: darwin, goarch: arm64, cc: "clang -arch arm64" }
-          - { runner: macos-latest, goos: darwin, goarch: amd64, cc: "clang -arch x86_64" }
-          - { runner: ubuntu-latest, goos: linux, goarch: amd64, cc: gcc }
-          - { runner: ubuntu-24.04-arm, goos: linux, goarch: arm64, cc: gcc }
+          - { runner: macos-latest, platform: macos-apple-silicon, goos: darwin, goarch: arm64, cc: "clang -arch arm64" }
+          - { runner: macos-latest, platform: macos-intel, goos: darwin, goarch: amd64, cc: "clang -arch x86_64" }
+          - { runner: ubuntu-latest, platform: linux-amd64, goos: linux, goarch: amd64, cc: gcc }
+          - { runner: ubuntu-24.04-arm, platform: linux-arm64, goos: linux, goarch: arm64, cc: gcc }
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -31,11 +31,11 @@ jobs:
         run: |
           go build -tags goolm -trimpath \
             -ldflags "-s -w -X main.Tag=${GITHUB_REF_NAME} -X main.Commit=${GITHUB_SHA} -X main.BuildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            -o "parro-bridge-${{ matrix.goos }}-${{ matrix.goarch }}" ./cmd/parro-bridge
+            -o "parro-beeper-bridge-${GITHUB_REF_NAME}-${{ matrix.platform }}" ./cmd/parro-beeper-bridge
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: parro-bridge-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: parro-bridge-${{ matrix.goos }}-${{ matrix.goarch }}
+          name: ${{ matrix.platform }}
+          path: parro-beeper-bridge-${{ github.ref_name }}-${{ matrix.platform }}
 
   release:
     needs: build
@@ -48,5 +48,16 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          sha256sum parro-bridge-* > SHA256SUMS
-          gh release create "$GITHUB_REF_NAME" parro-bridge-* SHA256SUMS --repo "$GITHUB_REPOSITORY" --generate-notes
+          sha256sum parro-beeper-bridge-* > SHA256SUMS
+          cat > notes.md <<NOTES
+          Most people do not need these files: \`./install.sh\` builds from source, or downloads the right file itself when Go is missing.
+
+          | File | For |
+          |---|---|
+          | \`parro-beeper-bridge-${GITHUB_REF_NAME}-macos-apple-silicon\` | Mac with M1 or newer |
+          | \`parro-beeper-bridge-${GITHUB_REF_NAME}-macos-intel\` | Mac with an Intel processor |
+          | \`parro-beeper-bridge-${GITHUB_REF_NAME}-linux-amd64\` | Linux on x86_64 |
+          | \`parro-beeper-bridge-${GITHUB_REF_NAME}-linux-arm64\` | Linux on arm64, such as a Raspberry Pi 4 or 5 |
+          | \`SHA256SUMS\` | Checksums of the files above |
+          NOTES
+          gh release create "$GITHUB_REF_NAME" parro-beeper-bridge-* SHA256SUMS --repo "$GITHUB_REPOSITORY" --notes-file notes.md --generate-notes
