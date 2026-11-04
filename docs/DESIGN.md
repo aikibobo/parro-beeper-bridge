@@ -1,6 +1,6 @@
 # Design
 
-One Go program on [mautrix bridgev2](https://github.com/mautrix/go/tree/main/bridgev2), connected to Beeper over the appservice websocket that `bbctl` sets up. One user, one launchd agent, one SQLite file.
+One Go program on [mautrix bridgev2](https://github.com/mautrix/go/tree/main/bridgev2), connected to Beeper over the appservice websocket that `bbctl` sets up. One user, one background service (launchd on macOS, systemd --user on Linux), one SQLite file.
 
 ## Layout
 
@@ -9,8 +9,9 @@ One Go program on [mautrix bridgev2](https://github.com/mautrix/go/tree/main/bri
 | `cmd/parro-bridge` | Entry point, refuses to start without encryption |
 | `pkg/parro` | API client and login. GET only towards the API, enforced by the HTTP transport |
 | `pkg/connector` | bridgev2 connector: login, discovery, polling, message conversion |
-| `scripts/watchdog.sh` | Runs separately every 5 minutes and alerts when the bridge stops working |
-| `install.sh` | Builds, tests, then swaps the running agents |
+| `scripts/watchdog.sh` | Runs separately every 5 minutes and alerts when the bridge stops working: a dialog on macOS, the journal and a desktop notification on Linux |
+| `install.sh` | Builds and tests (or downloads a checked release binary), then swaps the running services |
+| `.github/workflows/release.yml` | On a `v*` tag, builds native binaries for macOS and Linux on arm64 and amd64, with `SHA256SUMS` |
 
 ## Parro API
 
@@ -40,5 +41,5 @@ A failed attachment becomes a text line, and the rest of the message still comes
 ## Known limits
 
 1. `TestWholeChain` runs the real bridgev2 core with this connector against a fake Parro and a fake Matrix server. Real Parro, Beeper, encryption and the service manager are not part of it.
-2. macOS only for installer and watchdog.
+2. The Linux installer and watchdog are tested in a container with `systemctl` stubbed, not on a real systemd machine.
 3. Refresh token lifetime and Parro's rate limits are unknown.
