@@ -158,8 +158,14 @@ PLIST
     launchctl bootout "$domain/$old" 2>/dev/null || true
     rm -f "$agents/$old.plist"
   done
-  launchctl bootout "$domain/$LABEL" 2>/dev/null || true
-  launchctl bootout "$domain/$WATCHDOG_LABEL" 2>/dev/null || true
+  for label in "$LABEL" "$WATCHDOG_LABEL"; do
+    launchctl bootout "$domain/$label" 2>/dev/null || true
+    # bootout returns before the service is gone; bootstrap fails with an I/O error until it is.
+    for _ in $(seq 1 50); do
+      launchctl print "$domain/$label" >/dev/null 2>&1 || break
+      sleep 0.2
+    done
+  done
   copy_files
   launchctl bootstrap "$domain" "$agents/$LABEL.plist"
   launchctl bootstrap "$domain" "$agents/$WATCHDOG_LABEL.plist"
