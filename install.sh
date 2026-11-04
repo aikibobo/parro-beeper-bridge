@@ -77,7 +77,9 @@ fi
 
 # Everything that can fail on its own happens before the running bridge is touched.
 if command -v go >/dev/null; then
-  go build -tags goolm -o "$APP" ./cmd/$APP
+  go build -tags goolm -o "$APP" \
+    -ldflags "-X main.Tag=$(git describe --tags --exact-match 2>/dev/null) -X main.Commit=$(git rev-parse HEAD 2>/dev/null)" \
+    ./cmd/$APP
   go test -tags goolm ./...
 else
   # Release files carry the version, so find the latest tag through the redirect of /releases/latest.
