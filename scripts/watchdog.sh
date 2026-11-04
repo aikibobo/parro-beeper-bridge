@@ -2,7 +2,7 @@
 # Run every 5 minutes by launchd or a systemd timer, separately from the bridge, so it still works when the bridge
 # is dead. Two bad checks in a row raise an alert, so a computer waking from sleep gets time to catch up first.
 DATA="$(cd "$(dirname "$0")" && pwd)"
-LABEL=parro-bridge
+LABEL=parro-beeper-bridge
 HEARTBEAT="$DATA/last-poll-ok"
 NEEDS_LOGIN="$DATA/needs-login"
 COUNT_FILE="$DATA/watchdog-count"

@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
-# Installs parro-bridge as a background service with a watchdog: launchd on macOS, systemd --user on Linux.
+# Installs parro-beeper-bridge as a background service with a watchdog: launchd on macOS, systemd --user on Linux.
 # Safe to run again to update. Builds from source when Go is installed, otherwise downloads a release binary.
 set -euo pipefail
 cd "$(dirname "$0")"
 REPO=$PWD
 
 NAME=sh-parro
-LABEL=parro-bridge
-WATCHDOG_LABEL=parro-bridge-watchdog
+APP=parro-beeper-bridge
+LABEL=$APP
+WATCHDOG_LABEL=$APP-watchdog
+# Names used by earlier versions, cleaned up on install.
+LEGACY_LABELS="parro-bridge parro-bridge-watchdog nl.deveneijns.parro-bridge nl.deveneijns.parro-bridge-watchdog"
 GITHUB_REPO=aikibobo/parro-beeper-bridge
 LOGO_URL=https://talk.parro.com/icons/Icon-512.png
 BBCTL=$REPO/bin/bbctl
@@ -16,25 +19,32 @@ BBCTL_VERSION=v0.15.0
 OS=$(uname -s)
 case "$OS/$(uname -m)" in
   Darwin/arm64)
-    PLATFORM=darwin-arm64
+    PLATFORM=macos-apple-silicon
+    BBCTL_ASSET=bbctl-macos-arm64
     BBCTL_SHA256=4ed8dcd4bfda2500fef7258d6109dfc200a9d7a4046c878d9749962d1219671c ;;
   Darwin/x86_64)
-    PLATFORM=darwin-amd64
+    PLATFORM=macos-intel
+    BBCTL_ASSET=bbctl-macos-amd64
     BBCTL_SHA256=887b8a344c2782c150bb84aecd6c144f5b8d028bf9960622cf497730fb5dbf2c ;;
   Linux/x86_64)
     PLATFORM=linux-amd64
+    BBCTL_ASSET=bbctl-linux-amd64
     BBCTL_SHA256=ff3091816429d41aeb51871445f8ccd77864ebe479a57a4b4a5981fd5051a73e ;;
   Linux/aarch64 | Linux/arm64)
     PLATFORM=linux-arm64
+    BBCTL_ASSET=bbctl-linux-arm64
     BBCTL_SHA256=aea4f129ac1dffd964d1ad8a57bd2d080c969f277666d0aa734b73de7c6f0033 ;;
   *)
     echo "!! Not supported: $OS $(uname -m)." >&2
     exit 1 ;;
 esac
-case "$PLATFORM" in
-  darwin-*) BBCTL_ASSET=bbctl-macos-${PLATFORM#darwin-}; DATA="$HOME/Library/Application Support/parro-bridge" ;;
-  linux-*) BBCTL_ASSET=bbctl-$PLATFORM; DATA="${XDG_DATA_HOME:-$HOME/.local/share}/parro-bridge" ;;
-esac
+if [ "$OS" = Darwin ]; then
+  DATA_PARENT="$HOME/Library/Application Support"
+else
+  DATA_PARENT="${XDG_DATA_HOME:-$HOME/.local/share}"
+fi
+DATA="$DATA_PARENT/$APP"
+LEGACY_DATA="$DATA_PARENT/parro-bridge"
 
 sha256_check() { # file expected
   if command -v shasum >/dev/null; then
@@ -67,21 +77,57 @@ fi
 
 # Everything that can fail on its own happens before the running bridge is touched.
 if command -v go >/dev/null; then
-  go build -tags goolm -o parro-bridge ./cmd/parro-bridge
+  go build -tags goolm -o "$APP" ./cmd/$APP
   go test -tags goolm ./...
 else
-  echo "== Go not found, downloading the latest release binary for $PLATFORM"
-  BASE="https://github.com/$GITHUB_REPO/releases/latest/download"
-  curl -fsSL -o parro-bridge.tmp "$BASE/parro-bridge-$PLATFORM"
+  # Release files carry the version, so find the latest tag through the redirect of /releases/latest.
+  latest=$(curl -fsSLI -o /dev/null -w '%{url_effective}' "https://github.com/$GITHUB_REPO/releases/latest")
+  TAG=${latest##*/}
+  case "$TAG" in v*) ;; *) echo "!! No release found to download." >&2; exit 1 ;; esac
+  FILE="$APP-$TAG-$PLATFORM"
+  echo "== Go not found, downloading $FILE"
+  BASE="https://github.com/$GITHUB_REPO/releases/download/$TAG"
+  curl -fsSL -o "$APP.tmp" "$BASE/$FILE"
   curl -fsSL -o SHA256SUMS.tmp "$BASE/SHA256SUMS"
-  want=$(awk -v f="parro-bridge-$PLATFORM" '$2 == f {print $1}' SHA256SUMS.tmp)
-  [ -n "$want" ] || { echo "!! No checksum for parro-bridge-$PLATFORM in the release." >&2; exit 1; }
-  sha256_check parro-bridge.tmp "$want"
+  want=$(awk -v f="$FILE" '$2 == f {print $1}' SHA256SUMS.tmp)
+  [ -n "$want" ] || { echo "!! No checksum for $FILE in the release." >&2; exit 1; }
+  sha256_check "$APP.tmp" "$want"
   rm SHA256SUMS.tmp
-  chmod +x parro-bridge.tmp
-  mv parro-bridge.tmp parro-bridge
+  chmod +x "$APP.tmp"
+  mv "$APP.tmp" "$APP"
 fi
 [ -f scripts/watchdog.sh ] || { echo "!! scripts/watchdog.sh is missing." >&2; exit 1; }
+
+stop_services() {
+  local label
+  if [ "$OS" = Darwin ]; then
+    local domain agents="$HOME/Library/LaunchAgents"
+    domain="gui/$(id -u)"
+    for label in $LEGACY_LABELS "$LABEL" "$WATCHDOG_LABEL"; do
+      launchctl bootout "$domain/$label" 2>/dev/null || true
+      # bootout returns before the service is gone; bootstrap fails with an I/O error until it is.
+      for _ in $(seq 1 50); do
+        launchctl print "$domain/$label" >/dev/null 2>&1 || break
+        sleep 0.2
+      done
+    done
+    for label in $LEGACY_LABELS; do rm -f "$agents/$label.plist"; done
+  else
+    local units="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
+    for label in parro-bridge "$LABEL"; do
+      systemctl --user disable --now "$label.service" 2>/dev/null || true
+      systemctl --user disable --now "$label-watchdog.timer" 2>/dev/null || true
+    done
+    rm -f "$units/parro-bridge.service" "$units/parro-bridge-watchdog.service" "$units/parro-bridge-watchdog.timer"
+  fi
+}
+
+# Only now stop the running bridge: from here on its files move and get replaced.
+stop_services
+if [ -d "$LEGACY_DATA" ] && [ ! -e "$DATA" ]; then
+  mv "$LEGACY_DATA" "$DATA"
+  rm -f "$DATA/parro-bridge"
+fi
 
 umask 077
 mkdir -p "$DATA/logs"
@@ -103,9 +149,9 @@ if [ ! -s "$DATA/parro-logo.png" ]; then
 fi
 
 copy_files() {
-  cp parro-bridge "$DATA/parro-bridge"
+  cp "$APP" "$DATA/$APP"
   cp scripts/watchdog.sh "$DATA/watchdog.sh"
-  chmod 700 "$DATA/parro-bridge" "$DATA/watchdog.sh"
+  chmod 700 "$DATA/$APP" "$DATA/watchdog.sh"
   chmod 600 "$DATA/config.yaml"
   find "$DATA" -maxdepth 1 -name 'sh-parro.db*' -exec chmod 600 {} +
   find "$DATA/logs" -type f -exec chmod 600 {} +
@@ -125,7 +171,7 @@ install_launchd() {
   <key>Label</key><string>$LABEL</string>
   <key>ProgramArguments</key>
   <array>
-    <string>$DATA/parro-bridge</string>
+    <string>$DATA/$APP</string>
     <string>-c</string>
     <string>config.yaml</string>
   </array>
@@ -154,18 +200,6 @@ PLIST
 </dict>
 </plist>
 PLIST
-  for old in nl.deveneijns.parro-bridge nl.deveneijns.parro-bridge-watchdog; do
-    launchctl bootout "$domain/$old" 2>/dev/null || true
-    rm -f "$agents/$old.plist"
-  done
-  for label in "$LABEL" "$WATCHDOG_LABEL"; do
-    launchctl bootout "$domain/$label" 2>/dev/null || true
-    # bootout returns before the service is gone; bootstrap fails with an I/O error until it is.
-    for _ in $(seq 1 50); do
-      launchctl print "$domain/$label" >/dev/null 2>&1 || break
-      sleep 0.2
-    done
-  done
   copy_files
   launchctl bootstrap "$domain" "$agents/$LABEL.plist"
   launchctl bootstrap "$domain" "$agents/$WATCHDOG_LABEL.plist"
@@ -181,7 +215,7 @@ After=network-online.target
 
 [Service]
 WorkingDirectory=$DATA
-ExecStart=$DATA/parro-bridge -c config.yaml
+ExecStart=$DATA/$APP -c config.yaml
 Restart=always
 RestartSec=30
 UMask=0077
@@ -191,7 +225,7 @@ WantedBy=default.target
 UNIT
   cat > "$units/$WATCHDOG_LABEL.service" <<UNIT
 [Unit]
-Description=Parro bridge watchdog
+Description=Parro to Beeper bridge watchdog
 
 [Service]
 Type=oneshot
@@ -199,7 +233,7 @@ ExecStart=/bin/bash $DATA/watchdog.sh
 UNIT
   cat > "$units/$WATCHDOG_LABEL.timer" <<UNIT
 [Unit]
-Description=Check the Parro bridge every 5 minutes
+Description=Check the Parro to Beeper bridge every 5 minutes
 
 [Timer]
 OnBootSec=5min
@@ -208,7 +242,6 @@ OnUnitActiveSec=5min
 [Install]
 WantedBy=timers.target
 UNIT
-  systemctl --user stop "$LABEL.service" 2>/dev/null || true
   copy_files
   systemctl --user daemon-reload
   systemctl --user enable --now "$LABEL.service" "$WATCHDOG_LABEL.timer"
@@ -221,5 +254,5 @@ case "$PLATFORM" in
   darwin-*) install_launchd ;;
   linux-*) install_systemd ;;
 esac
-echo "== parro-bridge is running as $LABEL"
+echo "== $APP is running as $LABEL"
 echo "   First time? In Beeper, send 'login' to @${NAME}bot:beeper.local"
