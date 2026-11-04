@@ -18,7 +18,9 @@ var (
 
 func main() {
 	m := mxmain.BridgeMain{
-		Name:        "parro-beeper-bridge",
+		// Name owns the bridge database. It stays "parro-bridge" from v0.1.0, because mautrix refuses a
+		// database owned by another name, which would lock existing installs out of their login and chats.
+		Name:        "parro-bridge",
 		Description: "A read-only Parro to Beeper bridge",
 		URL:         "https://github.com/aikibobo/parro-beeper-bridge",
 		Version:     "0.1.0",
