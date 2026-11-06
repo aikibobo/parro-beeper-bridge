@@ -6,3 +6,4 @@ Small fixes are welcome. This is a hobby project, so answers can take a while.
 2. Test data is always made up. Never use real messages, names, photos or screenshots: they contain other parents and children.
 3. The bridge stays read-only towards Parro. Do not add calls that change anything there, or ways around a block by Topicus.
 4. Each test says in a comment what it protects (`protects`), which wrong result it rejects (`fails_when`) and what it does not prove (`no_claim`).
+5. Note user-visible changes under `[Unreleased]` in `CHANGELOG.md`. A release moves them under the new version.

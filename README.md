@@ -132,6 +132,10 @@ This project stands on other people's work:
 3. **Tulir Asokan and contributors**: [mautrix/go](https://github.com/mautrix/go) (MPL-2.0). The bridgev2 framework this runs on.
 4. **Beeper**: [bridge-manager](https://github.com/beeper/bridge-manager) (Apache-2.0). `bbctl`, downloaded during install.
 
+## Changes
+
+What changed per version: [CHANGELOG.md](CHANGELOG.md), also shown with each [release](https://github.com/aikibobo/parro-beeper-bridge/releases).
+
 ## License
 
 [MIT](LICENSE). Third-party notices are in [NOTICE](NOTICE). This is a hobby project without guarantees: issues may go unanswered.
