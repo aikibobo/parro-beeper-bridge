@@ -108,9 +108,15 @@ func (c *Client) Connect(ctx context.Context) {
 func (c *Client) pollLoop(ctx context.Context) {
 	c.resetPortalsIfRequested(ctx)
 	next := time.Now()
+	lastTick := time.Now()
 	ticker := time.NewTicker(wakeCheck)
 	defer ticker.Stop()
 	for {
+		// A gap between ticks means the computer slept: poll at once and forget the backoff from before.
+		if time.Since(lastTick) > 3*wakeCheck {
+			next, c.failCount = time.Now(), 0
+		}
+		lastTick = time.Now()
 		if !time.Now().Before(next) {
 			wait, keepGoing := c.pollOnce(ctx)
 			if !keepGoing {
@@ -126,8 +132,16 @@ func (c *Client) pollLoop(ctx context.Context) {
 	}
 }
 
-// pollDelay backs off after failures, and never polls sooner than Parro asked for.
-func pollDelay(failedCycles int, retryAfter time.Duration) time.Duration {
+// pollDelay backs off after failures, and never polls sooner than Parro asked for. Without a network,
+// as right after waking from sleep, it retries within minutes instead, so a returning connection is used quickly.
+func pollDelay(failedCycles int, retryAfter time.Duration, offline bool) time.Duration {
+	if offline {
+		wait := time.Minute
+		for range min(max(failedCycles-1, 0), 4) {
+			wait *= 2
+		}
+		return min(wait, pollInterval)
+	}
 	wait := pollInterval
 	for range min(failedCycles, 4) {
 		wait *= 2
@@ -169,7 +183,8 @@ func (c *Client) pollOnce(ctx context.Context) (time.Duration, bool) {
 	if errors.As(err, &httpErr) {
 		retryAfter = httpErr.RetryAfter
 	}
-	return pollDelay(c.failCount, retryAfter), true
+	offline := httpErr == nil && !errors.Is(err, parro.ErrAPIChanged)
+	return pollDelay(c.failCount, retryAfter, offline), true
 }
 
 func writeHeartbeat(path string) error {

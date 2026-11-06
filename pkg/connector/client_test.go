@@ -74,19 +74,19 @@ func TestWriteHeartbeatRefreshesMtime(t *testing.T) {
 // protects=polling backs off and respects Parro; fails_when=a failure polls at the normal rate, the wait grows without
 // bound, or Retry-After is ignored; no_claim=real Parro rate limits, which are unknown.
 func TestPollDelay(t *testing.T) {
-	if got := pollDelay(0, 0); got != pollInterval {
+	if got := pollDelay(0, 0, false); got != pollInterval {
 		t.Fatalf("healthy=%s", got)
 	}
-	if got := pollDelay(1, 0); got != 2*pollInterval {
+	if got := pollDelay(1, 0, false); got != 2*pollInterval {
 		t.Fatalf("one failure=%s", got)
 	}
-	if got := pollDelay(50, 0); got != maxBackoff {
+	if got := pollDelay(50, 0, false); got != maxBackoff {
 		t.Fatalf("many failures=%s", got)
 	}
-	if got := pollDelay(1, 3*time.Hour); got != 3*time.Hour {
+	if got := pollDelay(1, 3*time.Hour, false); got != 3*time.Hour {
 		t.Fatalf("retry after=%s", got)
 	}
-	if got := pollDelay(1, 100*time.Hour); got != maxRetryWait {
+	if got := pollDelay(1, 100*time.Hour, false); got != maxRetryWait {
 		t.Fatalf("huge retry after=%s", got)
 	}
 }
@@ -126,5 +126,15 @@ func TestAvatarIDIgnoresSignature(t *testing.T) {
 	b := avatarID("https://x.cloudfront.net/p/1.jpg?Expires=2&Signature=b")
 	if a != b || a != "https://x.cloudfront.net/p/1.jpg" {
 		t.Fatalf("a=%s b=%s", a, b)
+	}
+}
+
+// protects=a laptop that wakes up without network yet picks up again within minutes; fails_when=a network error waits
+// the 30 minute server backoff, or retries faster than once a minute; no_claim=how long macOS takes to reconnect.
+func TestPollDelayOffline(t *testing.T) {
+	for failed, want := range map[int]time.Duration{1: time.Minute, 2: 2 * time.Minute, 3: 4 * time.Minute, 5: pollInterval, 50: pollInterval} {
+		if got := pollDelay(failed, 0, true); got != want {
+			t.Fatalf("offline failure %d: %s, want %s", failed, got, want)
+		}
 	}
 }
