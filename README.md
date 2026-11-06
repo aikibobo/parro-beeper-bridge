@@ -87,7 +87,7 @@ Use it for your own account only.
 
 **Why is the icon in the Beeper sidebar still a green speech bubble?** Beeper seems to choose that one itself for self-hosted bridges. The chats do show the Parro logo, which the installer downloads to your own Mac.
 
-**What is that alert with a sound?** The watchdog checks every 5 minutes, separately from the bridge. It alerts when the bridge is gone or has not read anything for 45 minutes, and tells you what to do. On Linux it writes to the journal and, with a desktop session, shows a notification. It cannot warn you when the computer itself is off.
+**What is that alert with a sound?** The watchdog checks every 5 minutes, separately from the bridge. It alerts when the bridge is gone or has not read anything for 45 minutes, and tells you what to do. After the computer wakes from sleep it waits 30 minutes before calling the bridge stale, because nothing could be read while it was off. On Linux it writes to the journal and, with a desktop session, shows a notification. It cannot warn you when the computer itself is off.
 
 **Why not the Homebrew version of `bbctl`?** The tap ships v0.14.0, which the Beeper server rejects as out of date. The installer fetches v0.15.0 and checks its checksum.
 
