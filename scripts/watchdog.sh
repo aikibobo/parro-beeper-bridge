@@ -7,8 +7,12 @@ HEARTBEAT="$DATA/last-poll-ok"
 NEEDS_LOGIN="$DATA/needs-login"
 COUNT_FILE="$DATA/watchdog-count"
 ALERT_FILE="$DATA/watchdog-last-alert"
+LAST_RUN_FILE="$DATA/watchdog-last-run"
+GRACE_FILE="$DATA/watchdog-grace-until"
 STALE_AFTER=2700  # 45 minutes, three missed polls
 REPEAT_AFTER=7200 # 2 hours between alerts
+SLEPT_AFTER=900   # a gap this long between watchdog runs means the computer was asleep or off
+WAKE_GRACE=1800   # after waking, give the network and the bridge 30 minutes before calling it stale
 OS=$(uname -s)
 
 running() {
@@ -33,13 +37,23 @@ restart_bridge() {
 }
 
 now=$(date +%s)
+last_run=$(cat "$LAST_RUN_FILE" 2>/dev/null || echo "$now")
+echo "$now" > "$LAST_RUN_FILE"
+if [ $((now - last_run)) -gt "$SLEPT_AFTER" ]; then
+  echo $((now + WAKE_GRACE)) > "$GRACE_FILE"
+  rm -f "$COUNT_FILE"
+fi
+in_grace=false
+[ "$now" -lt "$(cat "$GRACE_FILE" 2>/dev/null || echo 0)" ] && in_grace=true
+
 problem=""
 if ! running; then
   problem="stopped"
 elif [ -e "$NEEDS_LOGIN" ]; then
   problem="login"
 elif [ ! -e "$HEARTBEAT" ] || [ $((now - $(mtime "$HEARTBEAT"))) -gt "$STALE_AFTER" ]; then
-  problem="stale"
+  # Stale right after a sleep is expected: the heartbeat aged while the computer was off.
+  [ "$in_grace" = true ] || problem="stale"
 fi
 
 if [ -z "$problem" ]; then
