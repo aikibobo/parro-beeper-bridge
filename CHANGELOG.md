@@ -4,6 +4,11 @@ What changed per release, newest first. The release notes on GitHub show the sam
 
 ## [Unreleased]
 
+## [v0.2.3] - 2026-11-20
+
+### Fixed
+- The bridge restarts itself when network errors last more than 30 minutes while the computer is awake. After a network change it could keep failing to look up Parro and Beeper for hours, showing "Parro is niet bereikbaar", while the computer itself was online.
+
 ## [v0.2.2] - 2026-11-06
 
 ### Fixed
@@ -38,7 +43,8 @@ First public release.
 - Release binaries for macOS and Linux on arm64 and amd64, used by the installer when Go is not installed.
 - End-to-end test of the bridge against fake Parro and Matrix servers.
 
-[Unreleased]: https://github.com/aikibobo/parro-beeper-bridge/compare/v0.2.2...HEAD
+[Unreleased]: https://github.com/aikibobo/parro-beeper-bridge/compare/v0.2.3...HEAD
+[v0.2.3]: https://github.com/aikibobo/parro-beeper-bridge/compare/v0.2.2...v0.2.3
 [v0.2.2]: https://github.com/aikibobo/parro-beeper-bridge/compare/v0.2.1...v0.2.2
 [v0.2.1]: https://github.com/aikibobo/parro-beeper-bridge/compare/v0.2.0...v0.2.1
 [v0.2.0]: https://github.com/aikibobo/parro-beeper-bridge/compare/v0.1.0...v0.2.0
