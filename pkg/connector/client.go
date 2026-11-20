@@ -79,6 +79,8 @@ type Client struct {
 	resynced  map[networkid.PortalID]bool
 	stop      context.CancelFunc
 	failCount int
+	// offlineSince is when the current run of network errors began, zero while Parro answers.
+	offlineSince time.Time
 }
 
 var (
@@ -114,13 +116,19 @@ func (c *Client) pollLoop(ctx context.Context) {
 	for {
 		// A gap between ticks means the computer slept: poll at once and forget the backoff from before.
 		if time.Since(lastTick) > 3*wakeCheck {
-			next, c.failCount = time.Now(), 0
+			next, c.failCount, c.offlineSince = time.Now(), 0, time.Time{}
 		}
 		lastTick = time.Now()
 		if !time.Now().Before(next) {
 			wait, keepGoing := c.pollOnce(ctx)
 			if !keepGoing {
 				return
+			}
+			if needsRestart(c.offlineSince, time.Now()) {
+				// Seen after a network change: the process kept failing DNS for hours while the computer was online,
+				// and a fresh process recovered at once. launchd and systemd start it again.
+				zerolog.Ctx(ctx).Error().Time("offline_since", c.offlineSince).Msg("No network for too long, restarting the bridge")
+				os.Exit(1)
 			}
 			next = time.Now().Add(wait + rand.N(pollJitter))
 		}
@@ -130,6 +138,13 @@ func (c *Client) pollLoop(ctx context.Context) {
 		case <-ticker.C:
 		}
 	}
+}
+
+// restartAfterOffline is how long network errors may last, while the computer is awake, before the bridge restarts.
+const restartAfterOffline = 30 * time.Minute
+
+func needsRestart(offlineSince, now time.Time) bool {
+	return !offlineSince.IsZero() && now.Sub(offlineSince) > restartAfterOffline
 }
 
 // pollDelay backs off after failures, and never polls sooner than Parro asked for. Without a network,
@@ -154,7 +169,7 @@ func (c *Client) pollOnce(ctx context.Context) (time.Duration, bool) {
 	err := c.sync(ctx)
 	switch {
 	case err == nil:
-		c.failCount = 0
+		c.failCount, c.offlineSince = 0, time.Time{}
 		c.UserLogin.BridgeState.Send(status.BridgeState{StateEvent: status.StateConnected})
 		if err := writeHeartbeat(heartbeatFile); err != nil {
 			zerolog.Ctx(ctx).Err(err).Msg("Failed to write heartbeat")
@@ -184,6 +199,11 @@ func (c *Client) pollOnce(ctx context.Context) (time.Duration, bool) {
 		retryAfter = httpErr.RetryAfter
 	}
 	offline := httpErr == nil && !errors.Is(err, parro.ErrAPIChanged)
+	if !offline {
+		c.offlineSince = time.Time{}
+	} else if c.offlineSince.IsZero() {
+		c.offlineSince = time.Now()
+	}
 	return pollDelay(c.failCount, retryAfter, offline), true
 }
 

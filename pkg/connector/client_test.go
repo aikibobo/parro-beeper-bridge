@@ -138,3 +138,18 @@ func TestPollDelayOffline(t *testing.T) {
 		}
 	}
 }
+
+// protects=a bridge stuck on network errors while the computer is online restarts itself; fails_when=it restarts while
+// Parro answers or after a short outage; no_claim=that a restart fixes every network fault, it fixed the one seen.
+func TestNeedsRestart(t *testing.T) {
+	now := time.Now()
+	if needsRestart(time.Time{}, now) {
+		t.Fatal("restart without network errors")
+	}
+	if needsRestart(now.Add(-10*time.Minute), now) {
+		t.Fatal("restart after a short outage")
+	}
+	if !needsRestart(now.Add(-31*time.Minute), now) {
+		t.Fatal("no restart after 31 minutes offline")
+	}
+}
