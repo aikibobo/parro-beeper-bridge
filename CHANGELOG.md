@@ -9,6 +9,9 @@ What changed per release, newest first. The release notes on GitHub show the sam
 ### Fixed
 - The bridge restarts itself when network errors last more than 30 minutes while the computer is awake. After a network change it could keep failing to look up Parro and Beeper for hours, showing "Parro is niet bereikbaar", while the computer itself was online.
 
+### Security
+- Built with Go 1.27.4, which fixes a vulnerability in `net/http` (GO-2026-6859).
+
 ## [v0.2.2] - 2026-11-06
 
 ### Fixed
